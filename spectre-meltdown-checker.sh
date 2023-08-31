@@ -512,11 +512,13 @@ is_cpu_affected()
 			[ -z "$variantl1tf" ] && variantl1tf=immune
 		fi
 		# Downfall
+		_debug "is_cpu_affected: downfall: capabilities_gds_no=$capabilities_gds_no"
 		if [ "$capabilities_gds_no" = 1 ]; then
 			# capability bit for future Intel processors that will explicitly state
 			# that they're unaffected by GDS. Also set by hypervisors on virtual CPUs
 			# so that the guest kernel doesn't try to mitigate GDS when it's already mitigated on the host
 			_debug "is_cpu_affected: downfall: not affected (GDS_NO)"
+			_debug "is_cpu_affected: downfall: $variant_downfall"
 		elif [ "$cpu_family" = 6 ]; then
 			# list from https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=64094e7e3118aff4b0be8ff713c242303e139834
 			set -u
@@ -595,11 +597,11 @@ is_cpu_affected()
 			if [ -n "$cpupart" ] && [ -n "$cpuarch" ]; then
 				# Cortex-R7 and Cortex-R8 are real-time and only used in medical devices or such
 				# I can't find their CPU part number, but it's probably not that useful anyway
-				# model R7 R8 A8  A9  A12 A15 A17 A57 A72 A73 A75 A76 A77 Neoverse-N1 Neoverse-V1 Neoverse-N1 Neoverse-V2 
+				# model R7 R8 A8  A9  A12 A15 A17 A57 A72 A73 A75 A76 A77 Neoverse-N1 Neoverse-V1 Neoverse-N1 Neoverse-V2
 				# part   ?  ? c08 c09 c0d c0f c0e d07 d08 d09 d0a d0b d0d d0c         d40	  d49	      d4f
 				# arch  7? 7? 7   7   7   7   7   8   8   8   8   8   8   8           8		  8	      8
 				#
-				# Whitelist identified non-affected processors, use vulnerability information from 
+				# Whitelist identified non-affected processors, use vulnerability information from
 				# https://developer.arm.com/support/arm-security-updates/speculative-processor-vulnerability
 				# Partnumbers can be found here:
 				# https://github.com/gcc-mirror/gcc/blob/master/gcc/config/arm/arm-cpus.in
@@ -730,7 +732,7 @@ is_cpu_affected()
 	variantl1tf_sgx="$variantl1tf"
 	# even if we are affected to L1TF, if there's no SGX, we're not affected to the original foreshadow
 	[ "$cpuid_sgx" = 0 ] && variantl1tf_sgx=1
-	_debug "is_cpu_affected: final results are <$variant1> <$variant2> <$variant3> <$variant3a> <$variant4> <$variantl1tf> <$variantl1tf_sgx>"
+	_debug "is_cpu_affected: final results are <$variant1> <$variant2> <$variant3> <$variant3a> <$variant4> <$variantl1tf> <$variantl1tf_sgx> <$variant_downfall>"
 	is_cpu_affected_cached=1
 	_is_cpu_affected_cached "$1"
 	return $?
@@ -932,7 +934,7 @@ is_cpu_ssb_free()
 		if [ "$cpu_family" = "18" ] || \
 			[ "$cpu_family" = "17" ] || \
 			[ "$cpu_family" = "16" ] || \
-			[ "$cpu_family" = "15" ]; then 
+			[ "$cpu_family" = "15" ]; then
 			return 0
 		fi
 	fi
@@ -1624,7 +1626,7 @@ load_msr()
 			_debug "attempted to load module msr, insmod_msr=$insmod_msr"
 		else
 			_debug "msr module already loaded"
-		fi	
+		fi
 	else
 		if ! kldstat -q -m cpuctl; then
 			kldload cpuctl 2>/dev/null && kldload_cpuctl=1
@@ -1647,7 +1649,7 @@ load_cpuid()
 			_debug "attempted to load module cpuid, insmod_cpuid=$insmod_cpuid"
 		else
 			_debug "cpuid module already loaded"
-		fi	
+		fi
 	else
 		if ! kldstat -q -m cpuctl; then
 			kldload cpuctl 2>/dev/null && kldload_cpuctl=1
@@ -4191,9 +4193,9 @@ check_CVE_2017_5715_linux()
 					2)	if [ "$ibrs_fw_enabled" = 1 ]; then pstatus green YES "for kernel, user space, and firmware code" ; else pstatus green YES "for both kernel and user space"; fi;;
 					3)	if [ "$ibrs_fw_enabled" = 1 ]; then pstatus green YES "for kernel and firmware code"; else pstatus green YES; fi;;
 					4)	pstatus green YES "Enhanced flavor, performance impact will be greatly reduced";;
-					*)	if [ "$cpuid_ibrs" != 'SPEC_CTRL' ] && [ "$cpuid_ibrs" != 'IBRS_SUPPORT' ] && [ "$cpuid_spec_ctrl" != -1 ]; 
-							then pstatus yellow NO; _debug "ibrs: known cpu not supporting SPEC-CTRL or IBRS"; 
-						else 
+					*)	if [ "$cpuid_ibrs" != 'SPEC_CTRL' ] && [ "$cpuid_ibrs" != 'IBRS_SUPPORT' ] && [ "$cpuid_spec_ctrl" != -1 ];
+							then pstatus yellow NO; _debug "ibrs: known cpu not supporting SPEC-CTRL or IBRS";
+						else
 							pstatus yellow UNKNOWN; fi;;
 				esac
 			fi
@@ -5518,7 +5520,7 @@ check_CVE_2018_12127()
 ###################
 # MDSUM SECTION
 
-# Microarchitectural Data Sampling Uncacheable Memory 
+# Microarchitectural Data Sampling Uncacheable Memory
 check_CVE_2019_11091()
 {
 	cve='CVE-2019-11091'
@@ -6253,7 +6255,7 @@ check_CVE_2022_40982_linux() {
 			pstatus yellow NO
 		fi
 		_info_nol "* Kernel supports software mitigation by disabling AVX: "
-		if [ -n "$kernel_err" ]; then	
+		if [ -n "$kernel_err" ]; then
 			kernel_gds_err="$kernel_err"
 		elif grep -q 'gather_data_sampling' "$kernel"; then
 			kernel_gds="found gather_data_sampling in kernel image"
